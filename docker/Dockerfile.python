@@ -16,6 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY backend/chatbot_api.py .
 COPY backend/qdrant_setup.py .
+COPY backend/local_orchestrator.py .
+COPY backend/local_generator.py .
 
 # Expose the port Flask runs on
 EXPOSE 5001

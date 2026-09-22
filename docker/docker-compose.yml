@@ -1,5 +1,5 @@
 # ── Rammy HR Chatbot — Docker Compose ────────────────────────────────────────
-# Starts the Python backend, Node.js server, Qdrant vector DB, and MinIO storage.
+# Starts the Python backend, Node.js server, Ollama, Qdrant vector DB, and MinIO storage.
 #
 # First-time setup:
 #   1. docker-compose up --build -d       ← build and start all services
@@ -57,6 +57,22 @@ services:
             timeout: 5s
             retries: 5
 
+    # ── Local Ollama Model Server ─────────────────────────────────────────────
+    # The model is stored in a named volume and is pulled once after startup.
+    ollama:
+        image: ollama/ollama:latest
+        container_name: rammy-ollama
+        ports:
+            - "11434:11434"
+        volumes:
+            - ollama_storage:/root/.ollama
+        restart: unless-stopped
+        healthcheck:
+            test: ["CMD", "ollama", "list"]
+            interval: 10s
+            timeout: 5s
+            retries: 12
+
     # ── Python Flask Backend ───────────────────────────────────────────────────
     python:
         build:
@@ -76,12 +92,19 @@ services:
             # PDF_PROXY_BASE is the browser-accessible URL for the Node PDF proxy.
             # Override this in .env when deploying (e.g. https://your-domain.com/api/pdf).
             - PDF_PROXY_BASE=${PDF_PROXY_BASE:-http://localhost:3000/api/pdf}
+            # Optional local model used only to rewrite retrieval queries.
+            - LOCAL_ORCHESTRATOR_ENABLED=${LOCAL_ORCHESTRATOR_ENABLED:-true}
+            - LOCAL_MODEL_BASE_URL=${LOCAL_MODEL_BASE_URL:-http://ollama:11434}
+            - LOCAL_MODEL=${LOCAL_MODEL:-llama3.2:3b}
+            - LOCAL_MODEL_TIMEOUT=${LOCAL_MODEL_TIMEOUT:-4}
         ports:
             - "5001:5001"
         depends_on:
             qdrant:
                 condition: service_healthy
             minio:
+                condition: service_healthy
+            ollama:
                 condition: service_healthy
         restart: unless-stopped
         healthcheck:
@@ -116,6 +139,7 @@ services:
 volumes:
     qdrant_storage: # Qdrant vectors — survives docker-compose down
     minio_storage: # HR PDF documents — survives docker-compose down
+    ollama_storage: # Ollama models — survives docker-compose down
 
 networks:
     default:

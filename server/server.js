@@ -101,7 +101,7 @@ app.post("/api/chat", validateChatPayload, async (req, res) => {
     const response = await axios.post(
       `${PYTHON_BASE_URL}/chat`,
       { message, history: trimmedHistory },
-      { timeout: 30000 } // 30 s — allow time for slow LLM responses
+      { timeout: 120000 } // 30 s — allow time for slow LLM responses
     );
 
     return res.json({ reply: response.data.reply });
